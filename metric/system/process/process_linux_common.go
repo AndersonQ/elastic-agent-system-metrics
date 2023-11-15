@@ -30,6 +30,8 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/elastic/elastic-agent-libs/logp"
 	"github.com/elastic/elastic-agent-libs/mapstr"
 	"github.com/elastic/elastic-agent-libs/opt"
@@ -105,17 +107,23 @@ func FillPidMetrics(hostfs resolve.Resolver, pid int, state ProcState, filter fu
 
 	// FD metrics
 	state.FD, err = getFDStats(hostfs, pid)
-	if err != nil {
+	// ignore permission denied, so it won't fail for PIDs not owned by the
+	// current user
+	if err != nil && !errors.Is(err, unix.EACCES) {
 		return state, fmt.Errorf("error getting FD metrics for pid %d: %w", pid, err)
 	}
 
 	if state.Env == nil {
-		// env vars
+		// ignore errors, so it won't fail for PIDs not owned by the
+		// current user
 		state.Env, _ = getEnvData(hostfs, pid, filter)
 	}
 
 	state.Exe, state.Cwd, err = getProcStringData(hostfs, pid)
-	if err != nil && !errors.Is(err, os.ErrPermission) { // ignore permission errors
+	if err != nil &&
+		(!errors.Is(err, os.ErrPermission) &&
+			!errors.Is(err, unix.EACCES) &&
+			!errors.Is(err, syscall.ENOENT)) { // ignore permission errors
 		return state, fmt.Errorf("error getting metadata for pid %d: %w", pid, err)
 	}
 
