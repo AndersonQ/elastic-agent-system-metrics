@@ -92,9 +92,12 @@ func (procStats *Stats) Get() ([]mapstr.M, []mapstr.M, error) {
 
 	// actually fetch the PIDs from the OS-specific code
 	pidMap, plist, err := procStats.FetchPids()
-
 	if err != nil {
 		return nil, nil, fmt.Errorf("error gathering PIDs: %w", err)
+	}
+	var pids []int
+	for _, v := range plist {
+		pids = append(pids, v.Pid.ValueOr(-1))
 	}
 	// We use this to track processes over time.
 	procStats.ProcsMap.SetMap(pidMap)

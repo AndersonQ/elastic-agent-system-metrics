@@ -177,6 +177,31 @@ func TestNetworkFilter(t *testing.T) {
 	require.Equal(t, 1, len(ipMetrics.(map[string]interface{})))
 }
 
+func TestGetDebug(t *testing.T) {
+	testConfig := Stats{
+		Procs:        []string{".*"},
+		Hostfs:       resolve.NewTestResolver("/"),
+		CPUTicks:     false,
+		CacheCmdLine: true,
+		EnvWhitelist: []string{".*"},
+		IncludeTop: IncludeTopConfig{
+			Enabled:  true,
+			ByCPU:    4,
+			ByMemory: 0,
+		},
+		EnableCgroups: false,
+		CgroupOpts: cgroup.ReaderOptions{
+			RootfsMountpoint:  resolve.NewTestResolver("/"),
+			IgnoreRootCgroups: true,
+		},
+	}
+	err := testConfig.Init()
+	require.NoError(t, err, "Init")
+
+	_, _, err = testConfig.Get()
+	require.NoError(t, err, "GetOne")
+}
+
 func TestFilter(t *testing.T) {
 	// The logic itself is os-independent, so we'll only test this on the platform least likely to have CI issues
 	if runtime.GOOS != "linux" {
